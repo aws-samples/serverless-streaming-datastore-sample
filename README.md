@@ -1,11 +1,11 @@
-## My Project
+## serverless-streaming-datastore-sample
+This project is a demonstration that allows you to utilize the following blog post:
 
-TODO: Fill this README out!
+[Build an end-to-end serverless streaming pipeline with Apache Kafka on Amazon MSK using Python](https://aws.amazon.com/blogs/big-data/build-an-end-to-end-serverless-streaming-pipeline-with-apache-kafka-on-amazon-msk-using-python/)
 
-Be sure to:
+It has been adapted to make the concepts from the blog post readily available as a demo.
 
-* Change the title in this README
-* Edit your repository description on GitHub
+
 
 ## Security
 

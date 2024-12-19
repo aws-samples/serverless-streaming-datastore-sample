@@ -61,19 +61,21 @@ to the VPC you have just created in order to connect to the MSK Cluster. At this
 
 Name can be set to any name. An example is MSK-VPC.
 
-For VPC, select MSKTest.
+For VPC, select "MSKTest".
 
-For Subnet, select MSKTest Private Subnet (AZ1)
+For Subnet, select "MSKTest Private Subnet (AZ1)"
 
-For SecurityGroup select ForMSKSecurityGroup
+For SecurityGroup select "ForMSKSecurityGroup"
 
-Once the CloudShell belonging to the Private Subnet has started, execute the following commandspip install boto3 kafka-python aws-msk-iam-sasl-signer-python
-
+Once the CloudShell belonging to the Private Subnet has started, execute the following commands
+```
+pip install boto3 kafka-python aws-msk-iam-sasl-signer-python
+```
 ## Step 5.
 Download Python scripts from the S3 bucket.
-
+```
 aws s3 cp s3://[YOUR-BUCKET-NAME]/pythonScripts.zip ./.
-
+```
 unzip pythonScripts.zip.
 
 ## Step 6. Set the environment variables for the broker URL and region value in the Python scripts.

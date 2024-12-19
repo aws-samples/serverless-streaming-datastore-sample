@@ -75,8 +75,8 @@ pip install boto3 kafka-python aws-msk-iam-sasl-signer-python
 Download Python scripts from the S3 bucket.
 ```
 aws s3 cp s3://[YOUR-BUCKET-NAME]/pythonScripts.zip ./.
-```
 unzip pythonScripts.zip.
+```
 
 ## Step 6. Set the environment variables for the broker URL and region value in the Python scripts.
 
@@ -89,18 +89,21 @@ If you are using the Oregon region (us-west-2):
 ```
 export AWS_REGION="us-west-2".
 export MSK_BROKER="boot-YOURMSKCLUSTER.c3.kafka-serverless.ap-southeast-1.amazonaws.com:9098".
-Run the Python scripts.
-Create an MSK topic:
+
+# Run the Python scripts. Create an MSK topic:
 python ./createTopic.py.
-Create a DynamoDB table:
+
+# Create a DynamoDB table:
 python ./createTable.py.
-Write test data to the MSK topic:
+
+# Write test data to the MSK topic:
 python ./kafkaDataGen.py.
 ```
 
 ## Step 7.
 
-Check the CloudWatch metrics for the created MSK, Lambda, and DynamoDB resources, and verify the data stored in the device_status table using the DynamoDB Data Explorer to ensure all processes executed correctly. If each process is executed without error, the test data written from CloudShell to MSK is also written to DynamoDB and can be checked.
+Check the CloudWatch metrics for the created MSK, Lambda, and DynamoDB resources, and verify the data stored in the device_status table using the DynamoDB Data Explorer to ensure all processes executed correctly. 
+If each process is executed without error, the test data written from CloudShell to MSK is also written to DynamoDB and can be checked.
  
 
 ## Step 8.

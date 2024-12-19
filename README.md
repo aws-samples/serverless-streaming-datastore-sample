@@ -42,7 +42,7 @@ After completion, note down the S3 bucket name output under "Outputs". You will 
  
 ## Step 2. 
 
-Upload the downloaded ZIP file “fromMSK.zip” to the S3 bucket you just created.
+Upload the downloaded ZIP file “fromMSK.zip”,"pythonScripts.zip" to the S3 bucket you just created.
  
 ## Step 3.  
 

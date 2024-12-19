@@ -1,0 +1,25 @@
+Resources:
+  S3BucketForMSKandDynamoDBSample:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::S3::Bucket"
+    DeletionPolicy: "Delete"
+    Properties:
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        BlockPublicAcls: true
+      BucketName: !Join ['-', ["for-msk-ddb-sample", !Ref 'AWS::AccountId']]
+      OwnershipControls:
+        Rules:
+        - ObjectOwnership: "BucketOwnerEnforced"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - BucketKeyEnabled: true
+          ServerSideEncryptionByDefault:
+            SSEAlgorithm: "AES256"
+
+Outputs:
+  BucketName:
+    Value: !Ref S3BucketForMSKandDynamoDBSample
+    Description: Name of the S3 bucket

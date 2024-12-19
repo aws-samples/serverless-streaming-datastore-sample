@@ -1,0 +1,488 @@
+Description:  This template deploys a VPC,MSK cluster and Lambda Function.
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: MSKTest
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.192.0.0/16
+
+  PublicSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 10.192.10.0/24
+
+  PublicSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 10.192.11.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+    Type: String
+    Default: 10.192.20.0/24
+
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: 10.192.21.0/24
+
+  LambdaFunctionName:
+    Type: String
+    Default: MSKandDynamoDB
+
+  LambdaHandlerName:
+    Type: String
+    Default: lambda_function.lambda_handler
+
+  LambdaCodeS3Bucket:
+    Type: String
+    Default: S3 bucket containing ZIP files for Lambda
+  LambdaCodeS3Key:
+    Type: String
+    Default: fromMSK.zip
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+    Description: EC2 instance type
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-x86_64'
+    Description: Latest Amazon Linux 2 AMI ID
+
+Resources:
+  MSKOperationIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+      - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+      - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      - !Sub 'arn:${AWS::Partition}:iam::aws:policy/EC2InstanceConnect'
+      MaxSessionDuration: 3600
+      RoleName: "MSKOperationRole"
+      Policies:
+      - PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Effect: Allow
+            Action:
+              - "kafka-cluster:Connect"
+              - "kafka-cluster:AlterCluster"
+              - "kafka-cluster:DescribeCluster"
+            Resource: !Sub "${MSKServerlessCluster}"
+          - Effect: Allow
+            Action:
+              - "kafka-cluster:DescribeTopic"
+              - "kafka-cluster:CreateTopic"
+              - "kafka-cluster:WriteData"
+              - "kafka-cluster:ReadData"
+            Resource: !Sub "arn:aws:kafka:${AWS::Region}:${AWS::AccountId}:topic/*"
+          - Effect: Allow
+            Action:
+              - "kafka-cluster:AlterGroup"
+              - "kafka-cluster:DescribeGroup"
+            Resource: !Sub "arn:aws:kafka:${AWS::Region}:${AWS::AccountId}:group/*"
+        PolicyName: "MSKOperationPolicy"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Action: "sts:AssumeRole"
+          Effect: "Allow"
+          Principal:
+            Service: "ec2.amazonaws.com"
+          Sid: ""
+          
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
+
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ1)
+
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ2)
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+
+  ForMSKSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: "ForMSKSecurityGroup"
+      GroupDescription: "Security group for MSK. Only for Test."
+      SecurityGroupIngress:
+        - IpProtocol: -1 # ALL protocol
+          FromPort: -1 # ALL port
+          ToPort: -1 # ALL Port
+          CidrIp: 10.0.0.0/8
+      VpcId: !Ref VPC
+
+  IAMInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: "/"
+      Roles:
+      - Ref: "MSKOperationIAMRole"
+      InstanceProfileName: "ForMSKOperation"  
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.small
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp3
+            Iops: 1000
+            VolumeSize: 32
+            Encrypted: false
+            DeleteOnTermination: true
+      IamInstanceProfile: !Ref IAMInstanceProfile
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref PublicSubnet1
+          GroupSet:
+            - !Ref ForMSKSecurityGroup
+      ImageId: !Ref LatestAmiId
+      Tags:
+        - Key: Name
+          Value:  "ForMSKOperation"
+      VpcId: !Ref VPC
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            #Install SSM Agent
+            yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+            
+            #Start SSM Agent
+            systemctl enable amazon-ssm-agent
+            systemctl start amazon-ssm-agent
+
+  MSKServerlessCluster:
+    Type: "AWS::MSK::ServerlessCluster"
+    Properties:
+      ClusterName: "MSKTest"
+      VpcConfigs:
+      - SecurityGroups:
+        - !Ref ForMSKSecurityGroup
+        SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      ClientAuthentication:
+        Sasl:
+          Iam:
+            Enabled: true
+      Tags:
+        Name: "MSKTest"
+
+  LambdaFunctionForMSK:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      MemorySize: 1024
+      Description: ""
+      TracingConfig:
+        Mode: "Active"
+      VpcConfig:
+        SecurityGroupIds:
+        - !Ref ForMSKSecurityGroup
+        SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        Ipv6AllowedForDualStack: false
+      Timeout: 3
+      RuntimeManagementConfig:
+        UpdateRuntimeOn: "Auto"
+      Handler: !Ref LambdaHandlerName
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      Role: !GetAtt LambdaExecutionRole.Arn
+      FileSystemConfigs: []
+      FunctionName: !Ref LambdaFunctionName
+      Runtime: "python3.12"
+      PackageType: "Zip"
+      LoggingConfig:
+        LogFormat: "Text"
+        LogGroup: "/aws/lambda/my-notification-kafka"
+      EphemeralStorage:
+        Size: 512
+      Architectures:
+      - "x86_64"
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kafka:DescribeClusterV2'
+                  - 'kafka:GetBootstrapBrokers'
+                Resource: !GetAtt MSKServerlessCluster.Arn
+
+              - Effect: Allow
+                Action:
+                  - 'kafka-cluster:Connect'
+                  - 'kafka-cluster:AlterCluster'
+                  - 'kafka-cluster:DescribeCluster'
+                  - 'kafka-cluster:DescribeGroup'
+                  - 'kafka-cluster:AlterGroup'
+                  - 'kafka-cluster:DescribeTopic'
+                  - 'kafka-cluster:ReadData'
+                  - 'kafka-cluster:DescribeClusterDynamicConfiguration'
+                  - 'kafka:DescribeClusterV2'
+                  - 'kafka:GetBootstrapBrokers'
+                Resource: 
+                  - !Sub "${MSKServerlessCluster}"
+                  - !Sub "arn:aws:kafka:${AWS::Region}:${AWS::AccountId}:topic/*"
+                  - !Sub "arn:aws:kafka:${AWS::Region}:${AWS::AccountId}:group/*"
+
+              - Effect: Allow
+                Action:
+                  - 'ec2:CreateNetworkInterface'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DescribeVpcs'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:DescribeSubnets'
+                  - 'ec2:DescribeSecurityGroups'
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'dynamodb:PutItem'
+                Resource: "*"
+      Path: /
+
+  LambdaEventSourceMappingForMSK:
+    Type: "AWS::Lambda::EventSourceMapping"
+    Properties:
+      StartingPosition: "LATEST"
+      BatchSize: 20
+      FunctionName:
+        Fn::GetAtt: LambdaFunctionForMSK.Arn
+      Topics:
+      - "mytopic"
+      Enabled: true
+      EventSourceArn: 
+        Fn::GetAtt: MSKServerlessCluster.Arn
+
+
+Outputs:
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref VPC
+
+  PublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
+
+  PrivateSubnets:
+    Description: A list of the private subnets
+    Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
+
+  PublicSubnet1:
+    Description: A reference to the public subnet in the 1st Availability Zone
+    Value: !Ref PublicSubnet1
+
+  PublicSubnet2:
+    Description: A reference to the public subnet in the 2nd Availability Zone
+    Value: !Ref PublicSubnet2
+
+  PrivateSubnet1:
+    Description: A reference to the private subnet in the 1st Availability Zone
+    Value: !Ref PrivateSubnet1
+
+  PrivateSubnet2:
+    Description: A reference to the private subnet in the 2nd Availability Zone
+    Value: !Ref PrivateSubnet2
+
+  ForMSKSecurityGroup:
+    Description: Security group with no ingress rule
+    Value: !Ref ForMSKSecurityGroup
+
+  InstanceId:
+    Description: Instance ID
+    Value: !Ref EC2Instance
+
+  PublicIPAddress:
+    Description: Public IP address of the instance
+    Value: !GetAtt EC2Instance.PublicIp
+
+  MSKClusterArn:
+    Description: ARN of the MSK Cluster
+    Value: !GetAtt MSKServerlessCluster.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-MSKClusterArn"

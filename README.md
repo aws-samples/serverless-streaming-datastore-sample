@@ -1,11 +1,11 @@
-## serverless-streaming-datastore-sample
+# serverless-streaming-datastore-sample
 This project is a demonstration that allows you to utilize the following blog post:
 
 [Build an end-to-end serverless streaming pipeline with Apache Kafka on Amazon MSK using Python](https://aws.amazon.com/blogs/big-data/build-an-end-to-end-serverless-streaming-pipeline-with-apache-kafka-on-amazon-msk-using-python/)
 
 It has been adapted to make the concepts from the blog post readily available as a demo.
 
-## How It Works
+# How It Works
 
 Integration between MSK and DynamoDB uses a Lambda function to consume records from MSK and write them to DynamoDB. 
 
@@ -31,7 +31,8 @@ To generate test data, create an MSK topic, and create a DynamoDB table, you can
 
 After running the CloudFormation template, you can finish building this architecture by performing the following operations:
 
-### Step 1. 
+# Operation 
+## Step 1. 
 
 Run the CloudFormation template “S3bucket.yaml” to create an S3 bucket. For any subsequent scripts or operations, please execute them in the same region.
 
@@ -39,11 +40,11 @@ Enter "ForMSKTestS3" as the CloudFormation stack name.
 
 After completion, note down the S3 bucket name output under "Outputs". You will need it in Step 3. 
  
-### Step 2. 
+## Step 2. 
 
 Upload the downloaded ZIP file “fromMSK.zip” to the S3 bucket you just created.
  
-### Step 3.  
+## Step 3.  
 
 Run the CloudFormation template “VPC.yaml” to create a VPC, MSK cluster, and Lambda function.
 
@@ -51,7 +52,7 @@ On the parameter input screen, enter the S3 bucket name you created in Step 1 wh
 
 Set the CloudFormation stack name to "ForMSKTestVPC".
  
-### Step 4. 
+## Step 4. 
 
 Prepare the environment for running Python scripts on the CloudShell.
 

@@ -260,8 +260,18 @@ Resources:
       SecurityGroupIngress:
         - IpProtocol: -1 # ALL protocol
           FromPort: -1 # ALL port
-          ToPort: -1 # ALL Port
+          ToPort: -1 # ALL
           CidrIp: 10.0.0.0/8
+      SecurityGroupEgress:
+       - IpProtocol: tcp
+         FromPort: 443
+         ToPort: 443
+         CidrIp: 0.0.0.0/0  # HTTPSトラフィックのみを許可
+       - IpProtocol: -1
+         FromPort: -1
+         ToPort: -1
+         CidrIp: 10.0.0.0/8  # Kafka特定のポートを内部ネットワークにのみ許可
+
       VpcId: !Ref VPC
 
   IAMInstanceProfile:

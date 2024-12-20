@@ -436,14 +436,6 @@ Outputs:
     Description: Security group with no ingress rule
     Value: !Ref ForMSKSecurityGroup
 
-  InstanceId:
-    Description: Instance ID
-    Value: !Ref EC2Instance
-
-  PublicIPAddress:
-    Description: Public IP address of the instance
-    Value: !GetAtt EC2Instance.PublicIp
-
   MSKClusterArn:
     Description: ARN of the MSK Cluster
     Value: !GetAtt MSKServerlessCluster.Arn

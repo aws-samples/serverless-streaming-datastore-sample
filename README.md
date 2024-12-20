@@ -42,7 +42,7 @@ After completion, note down the S3 bucket name output under "Outputs". You will 
  
 ## Step 2. 
 
-Upload the downloaded ZIP file “fromMSK.zip” to the S3 bucket you just created.
+Upload the downloaded ZIP file “fromMSK.zip”,"pythonScripts.zip" to the S3 bucket you just created.
  
 ## Step 3.  
 
@@ -79,7 +79,8 @@ aws s3 cp s3://[YOUR-BUCKET-NAME]/pythonScripts.zip ./.
 unzip pythonScripts.zip.
 ```
 
-## Step 6. Set the environment variables for the broker URL and region value in the Python scripts.
+## Step 6. 
+Set the environment variables for the broker URL and region value in the Python scripts.
 
 Check the MSK cluster broker endpoint in the management console.
   

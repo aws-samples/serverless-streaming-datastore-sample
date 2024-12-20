@@ -10,6 +10,8 @@ Resources:
         BlockPublicPolicy: true
         BlockPublicAcls: true
       BucketName: !Join ['-', ["for-msk-ddb-sample", !Ref 'AWS::AccountId']]
+      VersioningConfiguration:
+        Status: Enabled
       OwnershipControls:
         Rules:
         - ObjectOwnership: "BucketOwnerEnforced"

@@ -46,19 +46,6 @@ Parameters:
     Type: String
     Default: fromMSK.zip
 
-  InstanceType:
-    Type: String
-    Default: t3.micro
-    AllowedValues:
-      - t3.micro
-      - t3.small
-      - t3.medium
-    Description: EC2 instance type
-  LatestAmiId:
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-x86_64'
-    Description: Latest Amazon Linux 2 AMI ID
-
 Resources:
   MSKOperationIAMRole:
     Type: "AWS::IAM::Role"
@@ -285,41 +272,6 @@ Resources:
       - Ref: "MSKOperationIAMRole"
       InstanceProfileName: "ForMSKOperation"  
 
-  EC2Instance:
-    Type: AWS::EC2::Instance
-    Properties:
-      InstanceType: t3.small
-      BlockDeviceMappings:
-        - DeviceName: /dev/xvda
-          Ebs:
-            VolumeType: gp3
-            Iops: 1000
-            VolumeSize: 32
-            Encrypted: false
-            DeleteOnTermination: true
-      IamInstanceProfile: !Ref IAMInstanceProfile
-      NetworkInterfaces:
-        - AssociatePublicIpAddress: true
-          DeviceIndex: 0
-          SubnetId: !Ref PublicSubnet1
-          GroupSet:
-            - !Ref ForMSKSecurityGroup
-      ImageId: !Ref LatestAmiId
-      Tags:
-        - Key: Name
-          Value:  "ForMSKOperation"
-      VpcId: !Ref VPC
-      UserData:
-        Fn::Base64:
-          !Sub |
-            #!/bin/bash
-            #Install SSM Agent
-            yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
-            
-            #Start SSM Agent
-            systemctl enable amazon-ssm-agent
-            systemctl start amazon-ssm-agent
-
   MSKServerlessCluster:
     Type: "AWS::MSK::ServerlessCluster"
     Properties:
@@ -370,6 +322,7 @@ Resources:
         Size: 512
       Architectures:
       - "x86_64"
+      ReservedConcurrentExecutions: 10
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role

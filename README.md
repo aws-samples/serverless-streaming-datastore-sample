@@ -89,17 +89,17 @@ Set the environment variables on the CloudShell.
 If you are using the Oregon region (us-west-2):
 
 ```
-export AWS_REGION="us-west-2".
-export MSK_BROKER="boot-YOURMSKCLUSTER.c3.kafka-serverless.ap-southeast-1.amazonaws.com:9098".
+export AWS_REGION="us-west-2"
+export MSK_BROKER="boot-YOURMSKCLUSTER.c3.kafka-serverless.ap-southeast-1.amazonaws.com:9098"
 
 # Run the Python scripts. Create an MSK topic:
-python ./createTopic.py.
+python ./createTopic.py
 
 # Create a DynamoDB table:
-python ./createTable.py.
+python ./createTable.py
 
 # Write test data to the MSK topic:
-python ./kafkaDataGen.py.
+python ./kafkaDataGen.py
 ```
 
 ## Step 7.

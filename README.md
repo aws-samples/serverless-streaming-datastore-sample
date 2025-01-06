@@ -75,8 +75,8 @@ pip install boto3 kafka-python aws-msk-iam-sasl-signer-python
 ## Step 5.
 Download Python scripts from the S3 bucket.
 ```
-aws s3 cp s3://[YOUR-BUCKET-NAME]/pythonScripts.zip ./.
-unzip pythonScripts.zip.
+aws s3 cp s3://[YOUR-BUCKET-NAME]/pythonScripts.zip ./
+unzip pythonScripts.zip
 ```
 
 ## Step 6. 
